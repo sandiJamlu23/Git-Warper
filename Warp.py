@@ -27,13 +27,25 @@ class Translate(object):
             To run a command like: git pull
             subprocess.run(['git', 'pull'])             
         '''
-        cmd = ['git',command]
-        res = subprocess.run(cmd,capture_output=True, text=True)
+        res = None
+
+        if command == 'komit':
+            subprocess.run(['git', 'add', '.'])
+            comment = str(input('Masukkan pesan komit: '))
+            subprocess.run(['git', 'commit', '-m', comment])
+            res = subprocess.run(['git', 'push'])
+
+
+        else: 
+            cmd = ['git',command]
+            res = subprocess.run(cmd,capture_output=False, text=True)
 
         return res
         
     def handle_git_err(self, res):
-        stderr = res.stderr.lower()
+        stderr = ''
+        if res and res.stderr:
+            stderr = res.stderr.lower()
 
         # 1️⃣ Missing remote repo
         if "no configured push destination" in stderr:
@@ -63,7 +75,6 @@ class Translate(object):
             # Try the previous command again (optional, but cleaner)
             print("✅ Git identity set. Retrying your last command...")
             retry = subprocess.run(res.args, capture_output=True, text=True)
-            
             
             return retry
 
