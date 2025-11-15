@@ -10,15 +10,19 @@ class Translate(object):
                           'mendorong': 'push',
                           'status':'status'}
         '''
-        bahasa_to_english = ''
+        bahasa_to_english = None
         path = 'E:/Github Indo Wrapper/cmd.json'
-        with open(path, 'r',encoding='utf-8') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             translation = json.load(f)
 
-        if prompt.lower() in (key.lower() for key in translation):
-            bahasa_to_english = translation[prompt]
+        # Do a case-insensitive lookup so user can type any case
+        for key, val in translation.items():
+            if key.lower() == prompt.lower():
+                bahasa_to_english = val
+                break
 
-        else: bahasa_to_english = print("Perintah git tidak ditemukan")
+        if bahasa_to_english is None:
+            print("Perintah git tidak ditemukan")
 
         return bahasa_to_english
     
@@ -29,12 +33,19 @@ class Translate(object):
         '''
         res = None
 
-        if command == 'komit':
-            subprocess.run(['git', 'add', '.'])
-            comment = str(input('Masukkan pesan komit: '))
-            subprocess.run(['git', 'commit', '-m', comment])
-            res = subprocess.run(['git', 'push'])
+        if isinstance(command, str) and command.lower() in ('komit', 'commit'):
+            subprocess.run(['git', 'add', '.'], capture_output=True, text=True, check=True)
 
+            comment = input('Masukkan pesan komit: ').strip()
+            if not comment:
+                print("Pesan komit tidak boleh kosong.")
+                return
+
+            commit_res = subprocess.run(['git', 'commit', '-m', comment], capture_output=True, text=True)
+            print(commit_res.stdout or commit_res.stderr)
+
+            res = subprocess.run(['git', 'push'], capture_output=True, text=True)
+            print(res.stdout or res.stderr)
 
         else: 
             cmd = ['git',command]
@@ -85,6 +96,8 @@ if __name__ == '__main__':
     translate = Translate()
     command = sys.argv[1]
     bahasa_to_english = translate.user_input(command)
+    if not bahasa_to_english:
+        sys.exit(1)
     # print(bahasa_to_english)
     # run_cmd = Translate.run_git_command(bahasa_to_english)
     run_cmd = translate.run_git_command(bahasa_to_english)

@@ -1,5 +1,31 @@
-import subprocess
+import json
+import os
+# import cmd
 
-subprocess.run(['git','add','.'])
-comment = input('masukkan  pesan...')
-print(f'Pesan anda {comment}')
+class Try_json(object):
+    def translate(self, command):
+        # parsed = json.load
+        # load JSON
+        res = ''
+        path = 'E:/Github Indo Wrapper/cmd.json'
+        with open(path, 'r', encoding='utf-8') as f:
+            translation = json.load(f)
+ 
+        if command.lower() in (key.lower() for key in translation):
+            res = print(f'{command} - > {translation[command]}')
+
+        else: res = print('Translation not found')
+
+        return res
+
+word = Try_json()
+is_there = word.translate('mendorong')
+print(is_there)
+
+'''
+git add .
+git commit -m "your message"
+git push
+
+try commit
+'''
