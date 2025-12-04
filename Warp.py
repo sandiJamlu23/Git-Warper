@@ -34,7 +34,11 @@ class Translate(object):
         res = None
 
         if isinstance(command, str) and command.lower() in ('komit', 'commit'):
-            subprocess.run(['git', 'add', '.'], capture_output=True, text=True, check=True)
+            try:
+                subprocess.run(['git', 'add', '.'], capture_output=True, text=True, check=True)
+            except subprocess.CalledProcessError as e:
+                print('Gagal menambahkan perubahan:', e.stderr or e)
+                return e
 
             comment = input('Masukkan pesan komit: ').strip()
             if not comment:
@@ -44,6 +48,7 @@ class Translate(object):
             commit_res = subprocess.run(['git', 'commit', '-m', comment], capture_output=True, text=True)
             print(commit_res.stdout or commit_res.stderr)
 
+            # Try a plain push first
             res = subprocess.run(['git', 'push'], capture_output=True, text=True)
             print(res.stdout or res.stderr)
 
@@ -63,18 +68,23 @@ class Translate(object):
             url = input('Paste remote URL: ')
             subprocess.run(['git', 'remote', 'add', 'origin', url],
                         capture_output=True, text=True)
-            res = subprocess.run(['git', 'push', '-u', 'origin', 'main'],
+            # determine current branch
+            br = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True)
+            branch = br.stdout.strip() or 'main'
+            res = subprocess.run(['git', 'push', '-u', 'origin', branch],
                                 capture_output=True, text=True)
             return res
 
         # 2️⃣ No upstream branch
-        if 'current branch main has no upstream branch' in stderr:
-            res = subprocess.run(['git', 'push', '--set-upstream', 'origin', 'main'],
+        if 'no upstream' in stderr or 'has no upstream branch' in stderr:
+            br = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True)
+            branch = br.stdout.strip() or 'main'
+            res = subprocess.run(['git', 'push', '--set-upstream', 'origin', branch],
                                 capture_output=True, text=True)
             return res
 
         # 3️⃣ Author identity missing
-        if 'author identity unknown' in stderr:
+        if 'author identity unknown' in stderr or 'please tell me who you are' in stderr:
             email = input('Enter github email (you@example.com): ')
             name = input('Your Name: ')
 
@@ -88,6 +98,11 @@ class Translate(object):
             retry = subprocess.run(res.args, capture_output=True, text=True)
             
             return retry
+
+        # 4️⃣ Authentication / remote access issues
+        if 'authentication failed' in stderr or 'unable to access' in stderr or 'could not read from remote repository' in stderr:
+            print('Push failed due to authentication/remote access. Ensure your credentials or SSH keys are set up, or use a Personal Access Token for HTTPS.')
+            return res
 
         # If nothing matched, just return the original result
         return res
